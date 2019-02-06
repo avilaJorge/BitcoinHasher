@@ -1,4 +1,4 @@
-##### [Project 3](http://cwcserv.ucsd.edu/~billlin/classes/ECE111/project3.php)
+## [Project 3](http://cwcserv.ucsd.edu/~billlin/classes/ECE111/project3.php)
 
 Project 3 is an implementation of the SHA256 algorithm.  
   
