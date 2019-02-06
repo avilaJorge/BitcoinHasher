@@ -1,0 +1,7 @@
+*
+!src/
+!*.sv
+!.gitattributes
+!.gitignore
+!Readme.md
+!.gitkeep
