@@ -17,7 +17,6 @@ module simplified_sha256(input logic clk, reset_n, start,
 	logic [15:0] in_addr, out_addr, t_counter;
 	logic [31:0] H[0:7];
 	logic [31:0] a, b, c, d, e, f, g, h;
-	logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7;
 	
 	// w
 	logic [31:0] w[0:15] = '{
