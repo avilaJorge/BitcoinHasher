@@ -12,7 +12,7 @@ module simplified_sha256(input logic clk, reset_n, start,
 	assign mem_clk = clk;
 
   	// State set up and other variables
-  	enum logic [3:0] {IDLE, INIT, INIT_2, WAIT, COMPUTE, READ, WRITE, DONE, POST} state;
+  	enum logic [2:0] {IDLE, INIT, WAIT, COMPUTE, READ, WRITE, DONE, POST} state;
   	logic [31:0] block_counter;
 	logic [15:0] t_counter;
 	logic [31:0] H[0:7];
