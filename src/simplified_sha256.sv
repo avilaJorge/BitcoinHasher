@@ -12,7 +12,7 @@ module simplified_sha256(input logic clk, reset_n, start,
 	assign mem_clk = clk;
 
   	// State set up and other variables
-  	enum logic [3:0] {IDLE, INIT, WAIT, COMPUTE, READ, WRITE, DONE, POST} state;
+  	enum logic [3:0] {IDLE, INIT, INIT_2, WAIT, COMPUTE, READ, WRITE, DONE, POST} state;
   	logic [31:0] block_counter;
 	logic [15:0] t_counter;
 	logic [31:0] H[0:7];
@@ -104,11 +104,17 @@ module simplified_sha256(input logic clk, reset_n, start,
  			end
 			INIT: begin
 				{a, b, c, d, e, f, g, h} <= {H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7]};
-				state <= WAIT;
 				t_counter <= 0;
-				//Request first word
-				mem_we <= 0;
-				mem_addr <= message_addr + (block_counter*32'd16);
+				if (block_counter == 0) begin
+					state <= WAIT;
+					//Request first word
+					mem_we <= 0;
+					mem_addr <= message_addr + (block_counter*32'd16);
+				end else begin
+					state <= COMPUTE;
+					mem_addr <= message_addr + (block_counter * 32'd16) + 2;
+					w[15] <= mem_read_data;
+				end
 			end
 			WAIT: begin
 				state <= READ;
@@ -121,7 +127,10 @@ module simplified_sha256(input logic clk, reset_n, start,
 			end
  			COMPUTE: begin
 	 			if (t_counter < 8'd15) begin
-		 			if (block_counter > 0) begin
+		 			if (block_counter == 0) begin
+			 			mem_addr <= message_addr + (block_counter*32'd16) + 3 + t_counter;
+			 			w[15] <= mem_read_data;
+		 			end else begin
 			 			if (t_counter < 2) begin
 				 			mem_addr <= message_addr + (block_counter*32'd16) + 3 + t_counter;
 			 				w[15] <= mem_read_data;
@@ -133,9 +142,6 @@ module simplified_sha256(input logic clk, reset_n, start,
 				 			w[15] <= 32'h0;
 			 			else
 				 			w[15] <= 32'd640;
-		 			end else begin
-			 			mem_addr <= message_addr + (block_counter*32'd16) + 3 + t_counter;
-			 			w[15] <= mem_read_data;
 			 		end
 		 			{a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w[15], t_counter);
 		 			state <= COMPUTE;
@@ -146,6 +152,7 @@ module simplified_sha256(input logic clk, reset_n, start,
  					{a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w[15], t_counter);
 		 			state <= COMPUTE;
 	 			end else begin
+				 	mem_addr <= message_addr + ((block_counter + 1) * 32'd16);
 		 			state <= POST;
 		 		end
 	 			t_counter++;
@@ -160,6 +167,7 @@ module simplified_sha256(input logic clk, reset_n, start,
 				H[6] <= H[6] + g;
 				H[7] <= H[7] + h;
 				block_counter <= block_counter + 1;
+				mem_addr <= message_addr + ((block_counter + 1) * 32'd16) + 1;
 				if (block_counter < (BLOCKS - 1))
 					state <= INIT;
 				else begin
