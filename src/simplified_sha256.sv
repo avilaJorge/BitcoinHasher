@@ -16,7 +16,7 @@ module simplified_sha256(input logic clk, reset_n, start,
   	logic [31:0] block_counter;
 	logic [15:0] t_counter;
 	logic [31:0] H[0:7];
-	logic [31:0] a, b, c, d, e, f, g, h;
+	logic [31:0] a, b, c, d, e, f, g, h, p;
 	
 		// SHA256 K constants
 	parameter int k[0:63] = '{
@@ -31,18 +31,19 @@ module simplified_sha256(input logic clk, reset_n, start,
 	};
 	
 	// SHA256 hash round
-	function logic [255:0] sha256_op(input logic [31:0] a, b, c, d, e, f, g, h, w,
+	function logic [287:0] sha256_op(input logic [31:0] a, b, c, d, e, f, g, h, w, p,
 	                                 input logic [7:0] t);
-	    logic [31:0] S1, S0, ch, maj, t1, t2; // internal signals
+	    logic [31:0] S1, S0, ch, maj, t1, t2, new_p; // internal signals
 	begin
 	    S1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25);
 	    ch = (e & f) ^ ((~e) & g);
-	    t1 = h + S1 + ch + k[t] + w;
+		new_p = g + k[t + 1];
+	    t1 = S1 + ch + w + p;
 	    S0 = rightrotate(a, 2) ^ rightrotate(a, 13) ^ rightrotate(a, 22);
 	    maj = (a & b) ^ (a & c) ^ (b & c);
 	    t2 = S0 + maj;
 	
-	    sha256_op = {t1 + t2, a, b, c, d + t1, e, f, g};
+	    sha256_op = {t1 + t2, a, b, c, d + t1, e, f, g, new_p};
 	end
 	endfunction
 	
@@ -104,7 +105,7 @@ module simplified_sha256(input logic clk, reset_n, start,
 				end
  			end
 			INIT: begin
-				{a, b, c, d, e, f, g, h} <= {H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7]};
+				{a, b, c, d, e, f, g, h, p} <= {H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[7] + k[0]};
 				t_counter <= 0;
 				if (block_counter == 0) begin
 					state <= WAIT;
@@ -123,7 +124,7 @@ module simplified_sha256(input logic clk, reset_n, start,
 				mem_addr <= message_addr + (block_counter*32'd16) + 2;
 			end
  			COMPUTE: begin
-	 			if (t_counter < 8'd15) begin
+	 			if (t_counter < 8'd14) begin
 		 			if (block_counter == 0) begin
 			 			mem_addr <= message_addr + (block_counter*32'd16) + 3 + t_counter;
 			 			w[15] <= mem_read_data;
@@ -140,13 +141,13 @@ module simplified_sha256(input logic clk, reset_n, start,
 			 			else
 				 			w[15] <= 32'd640;
 			 		end
-		 			{a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w[15], t_counter);
+		 			{a, b, c, d, e, f, g, h, p} <= sha256_op(a, b, c, d, e, f, g, h, w[15], p, t_counter);
 		 			state <= COMPUTE;
 		 			for (int n = 0; n < 15; n++) w[n] <= w[n+1]; // just wires for sliding window
 	 			end else if (t_counter < PROCESSING_ROUNDS) begin
 		 			for (int n = 0; n < 15; n++) w[n] <= w[n+1]; // just wires for sliding window
 		 			w[15] <= wtnew();
- 					{a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w[15], t_counter);
+ 					{a, b, c, d, e, f, g, h, p} <= sha256_op(a, b, c, d, e, f, g, h, w[15], p, t_counter);
 		 			state <= COMPUTE;
 	 			end else begin
 				 	mem_addr <= message_addr + ((block_counter + 1) * 32'd16);
