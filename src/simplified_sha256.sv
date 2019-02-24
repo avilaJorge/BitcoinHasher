@@ -129,15 +129,12 @@ module simplified_sha256(input logic clk, reset_n, start,
 		 		for (int n = 0; n < 15; n++) w[n] <= w[n+1]; // just wires for sliding window
 			end
  			COMPUTE: begin
-	 			if (t_counter < 8'd15) begin
+	 			if (t_counter < 8'd14) begin
 		 			if (block_counter == 0) begin
 			 			mem_addr <= message_addr + (block_counter*32'd16) + 4 + t_counter;
 			 			w[15] <= mem_read_data;
 		 			end else begin
-			 			if (t_counter < 2) begin
-				 			mem_addr <= message_addr + (block_counter*32'd16) + 4 + t_counter;
-			 				w[15] <= mem_read_data;
-			 			end else if (t_counter < 2)
+			 			if (t_counter < 2)
 			 				w[15] <= mem_read_data;
 			 			else if (t_counter == 2)
 				 			w[15] <= 32'h8000_0000;
