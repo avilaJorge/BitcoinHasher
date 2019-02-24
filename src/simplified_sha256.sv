@@ -137,9 +137,7 @@ module simplified_sha256(input logic clk, reset_n, start,
 			 			if (t_counter < 2) begin
 				 			mem_addr <= message_addr + (block_counter*32'd16) + 4 + t_counter;
 			 				w[15] <= mem_read_data;
-			 			end else if (t_counter < 2)
-			 				w[15] <= mem_read_data;
-			 			else if (t_counter == 2)
+			 			end else if (t_counter == 2)
 				 			w[15] <= 32'h8000_0000;
 			 			else if (t_counter <  13)
 				 			w[15] <= 32'h0;
