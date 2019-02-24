@@ -16,7 +16,7 @@ module simplified_sha256(input logic clk, reset_n, start,
   	logic [31:0] block_counter;
 	logic [15:0] t_counter;
 	logic [31:0] H[0:7];
-	logic [31:0] a, b, c, d, e, f, g, h, p;
+	logic [31:0] a, b, c, d, e, f, g, h, precomp_wp;
 	
 		// SHA256 K constants
 	parameter int k[0:63] = '{
@@ -31,19 +31,18 @@ module simplified_sha256(input logic clk, reset_n, start,
 	};
 	
 	// SHA256 hash round
-	function logic [287:0] sha256_op(input logic [31:0] a, b, c, d, e, f, g, h, w, p,
+	function logic [287:0] sha256_op(input logic [31:0] a, b, c, d, e, f, g, h, w, precomp_wp,
 	                                 input logic [7:0] t);
-	    logic [31:0] S1, S0, ch, maj, t1, t2, new_p; // internal signals
+	    logic [31:0] S1, S0, ch, maj, t1, t2;// internal signals
 	begin
 	    S1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25);
 	    ch = (e & f) ^ ((~e) & g);
-		new_p = g + k[t + 1];
-	    t1 = S1 + ch + w + p;
+	    t1 = S1 + ch + precomp_wp;
 	    S0 = rightrotate(a, 2) ^ rightrotate(a, 13) ^ rightrotate(a, 22);
 	    maj = (a & b) ^ (a & c) ^ (b & c);
 	    t2 = S0 + maj;
 	
-	    sha256_op = {t1 + t2, a, b, c, d + t1, e, f, g, new_p};
+	    sha256_op = {t1 + t2, a, b, c, d + t1, e, f, g};
 	end
 	endfunction
 	
@@ -105,49 +104,57 @@ module simplified_sha256(input logic clk, reset_n, start,
 				end
  			end
 			INIT: begin
-				{a, b, c, d, e, f, g, h, p} <= {H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[7] + k[0]};
+				{a, b, c, d, e, f, g, h} <= {H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7]};
 				t_counter <= 0;
 				if (block_counter == 0) begin
 					state <= WAIT;
-					//Request first word
 					mem_we <= 0;
 					mem_addr <= message_addr + (block_counter*32'd16) + 1;
 				end else begin
-					state <= COMPUTE;
+					state <= READ;
 					mem_addr <= message_addr + (block_counter * 32'd16) + 2;
 					w[15] <= mem_read_data;
 				end
 			end
 			WAIT: begin
-				state <= COMPUTE;
+				state <= READ;
 				w[15] <= mem_read_data;
 				mem_addr <= message_addr + (block_counter*32'd16) + 2;
+			end
+			READ: begin
+				state <= COMPUTE;
+				w[15] <= mem_read_data;
+				mem_addr <= message_addr + (block_counter*32'd16) + 3;
+				precomp_wp <= w[15] + h + k[0];
+		 		for (int n = 0; n < 15; n++) w[n] <= w[n+1]; // just wires for sliding window
 			end
  			COMPUTE: begin
 	 			if (t_counter < 8'd14) begin
 		 			if (block_counter == 0) begin
-			 			mem_addr <= message_addr + (block_counter*32'd16) + 3 + t_counter;
+			 			mem_addr <= message_addr + (block_counter*32'd16) + 4 + t_counter;
 			 			w[15] <= mem_read_data;
 		 			end else begin
 			 			if (t_counter < 2) begin
-				 			mem_addr <= message_addr + (block_counter*32'd16) + 3 + t_counter;
+				 			mem_addr <= message_addr + (block_counter*32'd16) + 4 + t_counter;
 			 				w[15] <= mem_read_data;
-			 			end else if (t_counter < 3)
+			 			end else if (t_counter < 2)
 			 				w[15] <= mem_read_data;
-			 			else if (t_counter == 3)
+			 			else if (t_counter == 2)
 				 			w[15] <= 32'h8000_0000;
-			 			else if (t_counter <  14)
+			 			else if (t_counter <  13)
 				 			w[15] <= 32'h0;
 			 			else
 				 			w[15] <= 32'd640;
-			 		end
-		 			{a, b, c, d, e, f, g, h, p} <= sha256_op(a, b, c, d, e, f, g, h, w[15], p, t_counter);
+		 			end
+		 			precomp_wp <= w[15] + g + k[t_counter+1];
+		 			{a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w[15], precomp_wp, t_counter);
 		 			state <= COMPUTE;
 		 			for (int n = 0; n < 15; n++) w[n] <= w[n+1]; // just wires for sliding window
 	 			end else if (t_counter < PROCESSING_ROUNDS) begin
 		 			for (int n = 0; n < 15; n++) w[n] <= w[n+1]; // just wires for sliding window
 		 			w[15] <= wtnew();
- 					{a, b, c, d, e, f, g, h, p} <= sha256_op(a, b, c, d, e, f, g, h, w[15], p, t_counter);
+		 			precomp_wp <= w[15] + g + k[t_counter+1];
+ 					{a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w[15], precomp_wp, t_counter);
 		 			state <= COMPUTE;
 	 			end else begin
 				 	mem_addr <= message_addr + ((block_counter + 1) * 32'd16);
