@@ -124,7 +124,7 @@ module simplified_sha256(input logic clk, reset_n, start,
 				mem_addr <= message_addr + (block_counter*32'd16) + 2;
 			end
  			COMPUTE: begin
-	 			if (t_counter < 8'd14) begin
+	 			if (t_counter < 8'd15) begin
 		 			if (block_counter == 0) begin
 			 			mem_addr <= message_addr + (block_counter*32'd16) + 3 + t_counter;
 			 			w[15] <= mem_read_data;
