@@ -232,15 +232,6 @@ module bitcoin_hash(input logic clk, reset_n, start,
 					H_P2[5] <= H_P1[5] + f;
 					H_P2[6] <= H_P1[6] + g;
 					H_P2[7] <= H_P1[7] + h;
-//	 			end else begin
-//					H[0] <= H[0] + a;
-//					H[1] <= H[1] + b;
-//					H[2] <= H[2] + c;
-//					H[3] <= H[3] + d;
-//					H[4] <= H[4] + e;
-//					H[5] <= H[5] + f;
-//					H[6] <= H[6] + g;
-//					H[7] <= H[7] + h;
 		 		end
 		 			
 				block_counter <= block_counter + 1;
